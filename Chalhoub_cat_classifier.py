@@ -32,9 +32,9 @@ def create_input_matrix(train_set_x_orig):
 # initializes the parameters (W and b values)
 def initialize_parameters(X, hidden_neurons):
     W_1 = np.random.randn(hidden_neurons, X.shape[0])*0.01           # (4, 12288)
-    b_1 = np.random.randn(hidden_neurons, 1)*0.01                    # (4, 1)
+    b_1 = np.zeros((hidden_neurons, 1))*0.01                    # (4, 1)
     W_2 = np.random.randn(1, hidden_neurons)*0.01                    # (1, 4)
-    b_2 = np.random.randn(1, 1)*0.01                                 # (1, 1)
+    b_2 = 0                                # (1, 1)
 
     return W_1, b_1, W_2, b_2
 
@@ -87,9 +87,8 @@ def forward_prop(Y, W_1, b_1, W_2, b_2, X, activation):
     A_2 = sigmoid(Z_2)
     L = (Y *np.log(A_2)) + (1-Y)*np.log(1-A_2)
     cost = -(1/m)*np.sum(L)                                                     
-    accuracy = 1 - cost
 
-    return Z_1, A_1, A_2, cost, accuracy, activation
+    return Z_1, A_1, A_2, cost, activation
 
 # goes through the backward propagation steps of training the model
 def back_prop(Y, X, Z_1, A_1, A_2, W_2, activation):
@@ -112,7 +111,7 @@ def back_prop(Y, X, Z_1, A_1, A_2, W_2, activation):
     return dW_1, db_1, dW_2, db_2
 
 # obtains the testing accuracy by using the images in the 'test' dataset to compute accuracy
-def prediction(test_set_x_orig, Y_test, W_1, b_1, W_2, b_2, activation):
+def prediction(test_set_x_orig, Y_test, W_1, b_1, W_2, b_2, A_1, X, Y_train, activation):
     m_test =test_set_x_orig.shape[0]
     X_test = 1/255*(np.reshape(test_set_x_orig, (test_set_x_orig.shape[0], test_set_x_orig[-1].flatten().shape[0])).T)   
 
@@ -123,8 +122,12 @@ def prediction(test_set_x_orig, Y_test, W_1, b_1, W_2, b_2, activation):
     elif activation == 'relu':
         A_1_test = relu(np.dot(W_1, X_test) + b_1)
 
-    prediction_values = sigmoid(np.dot(W_2, A_1_test) + b_2)    
-    test_accuracy = 1 - ((1/m_test)*np.sum(abs(prediction_values - Y_test)))
+    prediction_values_train = np.round(sigmoid(np.dot(W_2, A_1) + b_2))    
+    train_accuracy = 1 - ((1/m_test)*np.sum(abs(prediction_values_train - Y_train)))
+    print('train accuracy: ', round(train_accuracy,3)*100, '%')
+
+    prediction_values_test = np.round(sigmoid(np.dot(W_2, A_1_test) + b_2))    
+    test_accuracy = 1 - ((1/m_test)*np.sum(abs(prediction_values_test - Y_test)))
     print('test accuracy: ', round(test_accuracy,3)*100, '%')
 
 def main():
@@ -139,7 +142,7 @@ def main():
     
     # for-loop to train the network
     for i in range(5000):
-        Z_1, A_1, A_2, cost, accuracy, activation = forward_prop(Y_train, W_1, b_1, W_2, b_2, X, activation='tanh')
+        Z_1, A_1, A_2, cost, activation = forward_prop(Y_train, W_1, b_1, W_2, b_2, X, activation='tanh')
         dW_1, db_1, dW_2, db_2 = back_prop(Y_train, X, Z_1, A_1, A_2, W_2, activation)
         db_1 = np.reshape(db_1, (hidden_neurons, 1))
         db_2 = np.reshape(db_2, (1, 1))
@@ -152,10 +155,9 @@ def main():
         if i % 200 == 0:
             print('Iteration number ', i)
             print('cost: ', round(cost, 4))
-            print('accuracy: ', round(accuracy*100, 4), '%')
     
     print(' ')
-    prediction(test_set_x_orig, Y_test, W_1, b_1, W_2, b_2, activation)           # compute predictions and accuracy using testing dataset
+    prediction(test_set_x_orig, Y_test, W_1, b_1, W_2, b_2, A_1, X, Y_train, activation)           # compute predictions and accuracy using testing dataset
     print(' ')
 
 if __name__ == '__main__':
