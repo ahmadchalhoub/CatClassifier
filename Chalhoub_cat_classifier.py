@@ -1,6 +1,6 @@
 # Author:   Ahmad Chalhoub
 # Project:  Converting the single-neuron cat classifier into a full single-layer network
-# Due date: 10/20/2021
+# Due date: 10/22/2021
 
 import h5py
 import numpy as np
@@ -32,9 +32,9 @@ def create_input_matrix(train_set_x_orig):
 # initializes the parameters (W and b values)
 def initialize_parameters(X, hidden_neurons):
     W_1 = np.random.randn(hidden_neurons, X.shape[0])*0.01           # (4, 12288)
-    b_1 = np.zeros((hidden_neurons, 1))*0.01                    # (4, 1)
+    b_1 = np.zeros((hidden_neurons, 1))*0.01                         # (4, 1)
     W_2 = np.random.randn(1, hidden_neurons)*0.01                    # (1, 4)
-    b_2 = 0                                # (1, 1)
+    b_2 = 0                                                          # (1, 1)
 
     return W_1, b_1, W_2, b_2
 
@@ -46,12 +46,11 @@ def relu(Z_1):
 # g' when using a relu activation function
 def relu_prime(Z_1):
 
-    return np.maximum(0, Z_1)
+    return np.where(Z_1 > 0, 1.0, 0.0)
 
 # applies tanh function on Z_1
 def tanh_func(Z_1):
     A_1 = np.tanh(Z_1)
-    #A_1 = (np.exp(Z_1) - np.exp(-Z_1)) / (np.exp(Z_1) + np.exp(-Z_1))
     
     return A_1
 
@@ -133,7 +132,7 @@ def prediction(test_set_x_orig, Y_test, W_1, b_1, W_2, b_2, A_1, X, Y_train, act
 def main():
     np.random.seed(42)      # always generate the same random values for the weights and biases for consistency
 
-    lr = 0.05              # learning rate
+    lr = 0.05               # learning rate
 
     train_set_x_orig, Y_train, test_set_x_orig, Y_test, classes = load_dataset()
     X = create_input_matrix(train_set_x_orig)
@@ -157,7 +156,7 @@ def main():
             print('cost: ', round(cost, 4))
     
     print(' ')
-    prediction(test_set_x_orig, Y_test, W_1, b_1, W_2, b_2, A_1, X, Y_train, activation)           # compute predictions and accuracy using testing dataset
+    prediction(test_set_x_orig, Y_test, W_1, b_1, W_2, b_2, A_1, X, Y_train, activation)        # compute predictions and accuracy using testing dataset
     print(' ')
 
 if __name__ == '__main__':
