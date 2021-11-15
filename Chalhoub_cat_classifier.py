@@ -1,11 +1,8 @@
 # Author:   Ahmad Chalhoub
-# Project:  Converting the single-neuron cat classifier into a full single-layer network
-# Due date: 10/22/2021
+# Project:  Converting the full single-layer network into a deep network of L layers
 
 import h5py
 import numpy as np
-import random
-import matplotlib.pyplot as plt
 
 # loads in training and testing dataset (images and labels) and the class IDs and returns that information
 def load_dataset():
@@ -29,135 +26,187 @@ def create_input_matrix(train_set_x_orig):
 
     return X
 
-# initializes the parameters (W and b values)
-def initialize_parameters(X, hidden_neurons):
-    W_1 = np.random.randn(hidden_neurons, X.shape[0])*0.01           # (4, 12288)
-    b_1 = np.zeros((hidden_neurons, 1))*0.01                         # (4, 1)
-    W_2 = np.random.randn(1, hidden_neurons)*0.01                    # (1, 4)
-    b_2 = 0                                                          # (1, 1)
+# applies relu function on Z
+def relu(Z):
 
-    return W_1, b_1, W_2, b_2
-
-# applies relu function on Z_1
-def relu(Z_1):
-
-    return np.maximum(0, Z_1)
+    return np.maximum(0, Z)
 
 # g' when using a relu activation function
-def relu_prime(Z_1):
+def relu_prime(Z):
 
-    return np.where(Z_1 > 0, 1.0, 0.0)
-
-# applies tanh function on Z_1
-def tanh_func(Z_1):
-    A_1 = np.tanh(Z_1)
+    return np.where(Z > 0, 1.0, 0.0)
     
-    return A_1
+# applies sigmoid function on Z
+def sigmoid(Z):
+    A = 1/(1 + np.exp(-Z))
 
-# g' when using a tanh activation function
-def tanh_prime(Z_1):
-
-    return (1 - tanh_func(Z_1)*tanh_func(Z_1))
-    
-# applies sigmoid function on 'Z_2'
-def sigmoid(Z_2):
-    A_2 = 1/(1 + np.exp(-Z_2))
-
-    return A_2
+    return A
 
 # g' when using a sigmoid activation function
-def sigmoid_prime(Z_1):
+def sigmoid_prime(Z):
 
-    return (sigmoid(Z_1) * (1 - sigmoid(Z_1)))
+    return (sigmoid(Z) * (1 - sigmoid(Z)))
 
-# goes through the forward propagation steps of training the model
-def forward_prop(Y, W_1, b_1, W_2, b_2, X, activation):
-    m = X.shape[1]
-    Z_1 = np.dot(W_1, X) + b_1
-
-    if activation == 'tanh':
-        A_1 = tanh_func(Z_1)
-    elif activation == 'sigmoid':
-        A_1 = sigmoid(Z_1)
-    elif activation == 'relu':
-        A_1 = relu(Z_1)
+# initializes the parameters (W and b values)
+def initialize_parameters(layer_dims):
+    weights = {}
+    biases = {}
     
-    Z_2 = np.dot(W_2, A_1) + b_2                                     
-    A_2 = sigmoid(Z_2)
-    L = (Y *np.log(A_2)) + (1-Y)*np.log(1-A_2)
-    cost = -(1/m)*np.sum(L)                                                     
+    for i in range(1, len(layer_dims)):
+        weights["W_{}".format(i)] = np.random.randn(layer_dims[i], layer_dims[i-1]) / np.sqrt(layer_dims[i-1])
+        biases["b_{}".format(i)] = np.zeros((layer_dims[i], 1))
 
-    return Z_1, A_1, A_2, cost, activation
+    return weights, biases
 
-# goes through the backward propagation steps of training the model
-def back_prop(Y, X, Z_1, A_1, A_2, W_2, activation):
-    m = X.shape[1]
-    dZ_2 = A_2 - Y
-    dW_2 = (1/m)*np.matmul(dZ_2, A_1.T)
-    db_2 = (1/m)*np.sum(dZ_2, axis=1)
+# performs the linear calculations of forward propagation
+def forward_linear(A_prev, W, b):
+    Z = np.dot(W, A_prev) + b
+    cache = (A_prev, W, b)
+    
+    return Z, cache
 
-    if activation == 'tanh':
-        Z_1_g_prime = tanh_prime(Z_1)
-    elif activation == 'sigmoid':
-        Z_1_g_prime = sigmoid_prime(Z_1)
-    elif activation == 'relu':
-        Z_1_g_prime = relu_prime(Z_1)
+# performs the activation calculations of the forward propagation
+def forward_activation(A_prev, W, b, activation):
+    Z, linear_cache = forward_linear(A_prev, W, b)
 
-    dZ_1 = np.multiply(np.matmul(W_2.T, dZ_2), Z_1_g_prime)
-    dW_1 = (1/m)*np.matmul(dZ_1, X.T)
-    db_1 = (1/m)*np.sum(dZ_1, axis=1)
+    if activation == 'relu':
+        A = relu(Z)
+    else:
+        A = sigmoid(Z)
 
-    return dW_1, db_1, dW_2, db_2
+    # cache = A_prev, W, b, Z
+    cache = (linear_cache, Z)                           
 
-# obtains the testing accuracy by using the images in the 'test' dataset to compute accuracy
-def prediction(test_set_x_orig, Y_test, W_1, b_1, W_2, b_2, A_1, X, Y_train, activation):
-    m_test =test_set_x_orig.shape[0]
-    X_test = 1/255*(np.reshape(test_set_x_orig, (test_set_x_orig.shape[0], test_set_x_orig[-1].flatten().shape[0])).T)   
+    return A, cache
 
-    if activation == 'tanh':
-        A_1_test = tanh_func(np.dot(W_1, X_test) + b_1)
-    elif activation == 'sigmoid':
-        A_1_test = sigmoid(np.dot(W_1, X_test) + b_1)
-    elif activation == 'relu':
-        A_1_test = relu(np.dot(W_1, X_test) + b_1)
+# performs overall forward propagation steps
+def forward_prop(weights, biases, X, layer_dims):
+    length = len(layer_dims) - 1
+    all_caches = []
 
-    prediction_values_train = np.round(sigmoid(np.dot(W_2, A_1) + b_2))    
-    train_accuracy = 1 - ((1/m_test)*np.sum(abs(prediction_values_train - Y_train)))
-    print('train accuracy: ', round(train_accuracy,3)*100, '%')
+    A_prev = X 
 
-    prediction_values_test = np.round(sigmoid(np.dot(W_2, A_1_test) + b_2))    
-    test_accuracy = 1 - ((1/m_test)*np.sum(abs(prediction_values_test - Y_test)))
-    print('test accuracy: ', round(test_accuracy,3)*100, '%')
+    activation = 'relu'
+    for i in range(1, length):
+        A, cache = forward_activation(A_prev, weights["W_{}".format(i)], biases["b_{}".format(i)], activation)
+        all_caches.append(cache)
+        A_prev = A
+    
+    activation = 'sigmoid'
+    A_final, cache = forward_activation(A_prev, weights["W_{}".format(length)], biases["b_{}".format(length)], activation)
+    all_caches.append(cache)
 
+    return A_final, all_caches
+
+# calculates cost
+def calculate_cost(A_final, Y_real):
+    m = Y_real.shape[1]
+    L = (Y_real *np.log(A_final)) + (1-Y_real)*np.log(1-A_final)
+    cost = -(1/m)*np.sum(L)
+
+    return cost
+
+# performs the linear calculations of backward propagation
+def backward_linear(dZ, cache):
+    A_prev, W, b = cache
+    m = A_prev.shape[1]
+    dW = (1/m)*np.dot(dZ, A_prev.T)
+    db = (1/m)*np.sum(dZ, axis=1)
+    dA_prev = np.dot(W.T, dZ)
+
+    return dA_prev, dW, db
+
+# performs the activation calculations of the backward propagation
+def backward_activation(dA, activation, cache):
+    linear_cache, Z = cache
+    if activation == 'relu':
+        dZ = dA*relu_prime(Z)
+    else:
+        dZ = dA*sigmoid_prime(Z)
+    
+    dA_prev, dW, db = backward_linear(dZ, linear_cache)
+
+    return  dA_prev, dW, db
+
+
+# performs overall backward propagation steps
+def back_prop(X, A_final, Y, layer_dims, cache):
+    length = len(layer_dims) - 1
+
+    # initialize backpropagation
+    dA = {}
+    dW = {}
+    db = {}
+    dA_final = -(np.divide(Y, A_final) - np.divide(1-Y, 1-A_final))
+
+    # use backward_activation function and the cached elements of the last layer to get dW_L, db_L, and dA_(L-1)
+    dA["dA_{}".format(length-1)], dW["dW_{}".format(length)], db["db_{}".format(length)] = backward_activation(dA_final, 'sigmoid', cache[length-1])
+
+    # i = 3 -> 2 -> 1 -> 0 (for L = 5)
+    for i in reversed(range(length-1)):
+        dA["dA_{}".format(i)], dW["dW_{}".format(i+1)], db["db_{}".format(i+1)] = backward_activation(dA["dA_{}".format(i+1)], 'relu', cache[i])
+        db["db_{}".format(i+1)] = np.reshape(db["db_{}".format(i+1)], (db["db_{}".format(i+1)].shape[0], 1))
+
+    return dW, db
+
+
+# updates the parameters (weights and biases) of the network
+def update_parameters(weights, biases, dW, db, lr, layer_dims):
+
+        # loop through weights and biases of all layers and update them
+        for i in range(1, len(layer_dims)):
+            weights["W_{}".format(i)] -= lr * dW["dW_{}".format(i)]
+            biases["b_{}".format(i)] -= lr * db["db_{}".format(i)]
+
+        return weights, biases
+
+
+# calculate the training & testing accuracies
+def prediction(test_set_x_orig, Y_test, X, Y_train, weights, biases, layer_dims):
+    X_test = 1/255*(np.reshape(test_set_x_orig, (test_set_x_orig.shape[0], test_set_x_orig[-1].flatten().shape[0])).T)
+
+    # training accuracy
+    A_final_predict, caches = forward_prop(weights, biases, X, layer_dims) 
+    predictions_test = np.round(A_final_predict)
+    testing_accuracy = np.mean(predictions_test==Y_train)
+    print('Training accuracy = ', testing_accuracy*100, ' %' )
+
+    # testing accuracy
+    A_final_predict, caches = forward_prop(weights, biases, X_test, layer_dims) 
+    predictions_test = np.round(A_final_predict)
+    testing_accuracy = np.mean(predictions_test==Y_test)
+    print('Testing accuracy = ', testing_accuracy*100, ' %' )
+
+    
 def main():
-    np.random.seed(42)      # always generate the same random values for the weights and biases for consistency
+    np.random.seed(10)
+    lr = 0.02               # learning rate
 
-    lr = 0.05               # learning rate
-
+    # load dataset
     train_set_x_orig, Y_train, test_set_x_orig, Y_test, classes = load_dataset()
     X = create_input_matrix(train_set_x_orig)
-    hidden_neurons = 12
-    W_1, b_1, W_2, b_2 = initialize_parameters(X, hidden_neurons)
-    
-    # for-loop to train the network
-    for i in range(5000):
-        Z_1, A_1, A_2, cost, activation = forward_prop(Y_train, W_1, b_1, W_2, b_2, X, activation='tanh')
-        dW_1, db_1, dW_2, db_2 = back_prop(Y_train, X, Z_1, A_1, A_2, W_2, activation)
-        db_1 = np.reshape(db_1, (hidden_neurons, 1))
-        db_2 = np.reshape(db_2, (1, 1))
 
-        W_1 -= (lr*dW_1)                                              
-        b_1 -= (lr*db_1)                                                
-        W_2 -= (lr*dW_2)
-        b_2 -= (lr*db_2)
+    # declare and initialize array with network layers
+    layer_dims = (X.shape[0], 22, 10, 7, 5, 3, 1)
+        
+    print('I am using ', len(layer_dims)-1, ' layers ', layer_dims[1:], ' and a learning rate = ', lr)
 
+    # initialize weights and biases for all layers
+    weights, biases = initialize_parameters(layer_dims)
+
+    # training loop
+    for i in range(3000):
+        A_final, all_caches = forward_prop(weights, biases, X, layer_dims)
+        dW, db = back_prop(X, A_final, Y_train, layer_dims, all_caches)
+        weights, biases = update_parameters(weights, biases, dW, db, lr, layer_dims)
         if i % 200 == 0:
-            print('Iteration number ', i)
-            print('cost: ', round(cost, 4))
-    
-    print(' ')
-    prediction(test_set_x_orig, Y_test, W_1, b_1, W_2, b_2, A_1, X, Y_train, activation)        # compute predictions and accuracy using testing dataset
-    print(' ')
+            cost = calculate_cost(A_final, Y_train)
+            print('The cost on iteration ', i, ' is = ', cost)
+
+    # calculate predictions/accuracies of trained model           
+    prediction(test_set_x_orig, Y_test, X, Y_train, weights, biases, layer_dims)
+
 
 if __name__ == '__main__':
     main()
+    
