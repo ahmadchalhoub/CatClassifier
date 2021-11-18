@@ -180,14 +180,14 @@ def prediction(test_set_x_orig, Y_test, X, Y_train, weights, biases, layer_dims)
     
 def main():
     np.random.seed(10)
-    lr = 0.02               # learning rate
+    lr = 0.01               # learning rate
 
     # load dataset
     train_set_x_orig, Y_train, test_set_x_orig, Y_test, classes = load_dataset()
     X = create_input_matrix(train_set_x_orig)
 
     # declare and initialize array with network layers
-    layer_dims = (X.shape[0], 22, 10, 7, 5, 3, 1)
+    layer_dims = (X.shape[0], 20, 10, 7, 5, 1)
         
     print('I am using ', len(layer_dims)-1, ' layers ', layer_dims[1:], ' and a learning rate = ', lr)
 
@@ -195,7 +195,7 @@ def main():
     weights, biases = initialize_parameters(layer_dims)
 
     # training loop
-    for i in range(3000):
+    for i in range(4000):
         A_final, all_caches = forward_prop(weights, biases, X, layer_dims)
         dW, db = back_prop(X, A_final, Y_train, layer_dims, all_caches)
         weights, biases = update_parameters(weights, biases, dW, db, lr, layer_dims)
@@ -209,4 +209,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-    
