@@ -6,4 +6,5 @@ This was the progressing assignment I worked on during my Deep Learning course.
 
 
 **Run Project Locally**
+
 In order to run the model locally, all that is needed after cloning the repository is to change the path of the training and testing dataset to the paths that correspond to your local machine.
