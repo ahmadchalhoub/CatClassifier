@@ -6,12 +6,12 @@ import numpy as np
 
 # loads in training and testing dataset (images and labels) and the class IDs and returns that information
 def load_dataset():
-    train_dataset = h5py.File('D:\School\Super_Senior\Deep_Learning\Assignments\CatClassifier\\train_catvnoncat.h5', "r")
+    train_dataset = h5py.File('D:\School\Super_Senior\Deep_Learning\Assignments\CatClassifier\data\\train_catvnoncat.h5', "r")
     train_set_x_orig = np.array(train_dataset["train_set_x"][:])
     train_set_y_orig = np.array(train_dataset["train_set_y"][:])
     train_set_y_orig = train_set_y_orig.reshape((1, train_set_y_orig.shape[0]))
 
-    test_dataset = h5py.File('D:\School\Super_Senior\Deep_Learning\Assignments\CatClassifier\\test_catvnoncat.h5', "r")
+    test_dataset = h5py.File('D:\School\Super_Senior\Deep_Learning\Assignments\CatClassifier\data\\test_catvnoncat.h5', "r")
     test_set_x_orig = np.array(test_dataset["test_set_x"][:])
     test_set_y_orig = np.array(test_dataset["test_set_y"][:])
     test_set_y_orig = test_set_y_orig.reshape((1, test_set_y_orig.shape[0]))
